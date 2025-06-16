@@ -1,0 +1,106 @@
+ /**
+ * The MyALU. is the ALU of YOUR OWN design that provides the same functions as in the Nand2Tetris project + additional functions (and uses different control bits.
+ * Computes one of the following functions:
+ * x+y, x-y, y-x, 0, 1, -1, x, y, -x, -y, !x, !y,
+ * x+1, y+1, x-1, y-1, x&y, x|y , x XOR y, on two 16-bit inputs, 
+ * according to 6 input bits denoted zx,nx,zy,ny,f,no.
+ * In addition, the ALU computes two 1-bit outputs:
+ * if the ALU output == 0, zr is set to 1; otherwise zr is set to 0;
+ * if the ALU output < 0, ng is set to 1; otherwise ng is set to 0.
+ */
+
+// Implementation: the ALU logic manipulates the x and y inputs
+
+
+CHIP MyALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs        
+        c0, // Control Bit 0 (Least significant) 
+        c1, // Control Bit 1
+        c2, // Control Bit 2
+        c3, // Control Bit 3
+	c4; // Control Bit 4 (Most significant - 5th Control bit)
+
+    OUT 
+        out[16], // 16-bit output
+        zr, // 1 if (out == 0), 0 otherwise
+        ng; // 1 if (out < 0),  0 otherwise
+   
+PARTS:
+
+//c0
+
+//0 and 1
+Mux16(a=false, b[0]=true, sel=c0, out=mux1);
+
+//-1 and X
+Add16(a=false, b=true, out=add1);
+Mux16(a=add1, b=x, sel=c0, out=mux2);
+
+//Y and X'
+Not16(in=x,out=not1);
+Mux16(a=y, b=not1, sel=c0, out=mux3); 
+
+//Y' and -X
+Not16(in=y, out=not2);
+Add16(a=not1, b[0]=true, out=add2);
+Mux16(a=not2, b=add2, sel=c0, out=mux4);
+
+//-Y and X+1
+Add16(a=not2, b[0]=true, out=add3);
+Inc16(in=x, out=inc1);
+Mux16(a=add3, b=inc1, sel=c0, out=mux5); 
+
+//X-1 and Y+1
+Add16(a=x, b=true, out=add4);
+Inc16(in=y, out=inc2);
+Mux16(a=add4, b=inc2, sel=c0, out=mux6);
+
+//Y-1 and X+Y
+Add16(a=y, b=true, out=add5);
+Add16(a=x, b=y, out=add6);
+Mux16(a=add5, b=add6, sel=c0, out=mux7);
+
+//X-Y and Y-X
+Add16(a=y, b=not1, out=add7);
+Not16(in=add7, out=not3);
+Add16(a=x, b=not2, out=add8);
+Not16(in=add8, out=not4);
+Mux16(a=not3, b=not4, sel=c0, out=mux8);
+
+//X AND Y and X OR Y 
+And16(a=x, b=y, out=and1);
+Or16(a=x, b=y, out=or1);
+Mux16(a=and1, b=or1, sel=c0, out=mux9);
+	
+//X XOR Y
+Xor16(a=x, b=y, out=xor1);
+
+//c1
+Mux16(a=mux1, b=mux2, sel=c1, out=mux10); // ( 0 and 1 ) ( -1 and x )
+Mux16(a=mux3, b=mux4, sel=c1, out=mux11); // ( Y and X') ( Y' and -X ) 
+Mux16(a=mux5, b=mux6, sel=c1, out=mux12); // (-Y and X+1 ) ( X-1 and Y+1 )
+Mux16(a=mux7, b=mux8, sel=c1, out=mux13); // ( Y-1 and X+Y ) ( X-Y and Y-X )
+Mux16(a=mux9, b=xor1, sel=c1, out=mux14); // ( X AND Y and X OR Y ) ( X XOR Y )
+
+//c2
+Mux16(a=mux10, b=mux11, sel=c2, out=mux15); // ( 0 and 1 ) ( -1 and x ) ( Y and X') ( Y' and -X )
+Mux16(a=mux12, b=mux13, sel=c2, out=mux16); // (-Y and X+1 ) ( X-1 and Y+1 ) ( Y-1 and X+Y ) ( X-Y and Y-X )
+
+//c3
+Mux16(a=mux15, b=mux16, sel=c3, out=mux17); // ( 0 and 1 ) ( -1 and x ) ( Y and X') ( Y' and -X ) (-Y and X+1 ) ( X-1 and Y+1 ) ( Y-1 and X+Y ) ( X-Y and Y-X )
+
+//c4
+Mux16(a=mux17, b=mux14, sel=c4, out=out1); // ( 0 and 1 ) ( -1 and x ) ( Y and X') ( Y' and -X ) (-Y and X+1 ) ( X-1 and Y+1 ) ( Y-1 and X+Y ) ( X-Y and Y-X ) ( X AND Y and X OR Y ) ( X XOR Y )
+
+
+//zr
+Or16Way(in=out1, out=out2);
+Not(in=out2, out=zr);
+
+//ng
+And16(a[0..15]=true,b=out1,out[15]=ng,out[0..14]=dc); 
+
+//out
+Or16(a=out1, b[0..15]=false, out=out);
+}

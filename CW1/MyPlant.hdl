@@ -1,0 +1,21 @@
+CHIP MyPlant{
+IN a,b,c;
+OUT out;
+
+PARTS:
+Not(in=a, out=xNot);
+Not(in=c, out=zNot);
+
+And(a=xNot, b=c, out=Aand);
+And(a=b, b=zNot, out=Band);
+
+Or(a=Aand, b=Band, out=out);
+
+}
+
+// X'Y'Z + X'YZ' + X'YZ + XYZ'
+// Z(X'Y' + X'Y) + Z'(X'Y + XY)
+// Z(X'(Y'+Y)) + Z'(Y(X+X'))
+// Z(X'(1)) + Z'(Y(1))
+// X'Z + XZ'
+// 2 AND, 2 NOT, 1 OR
